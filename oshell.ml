@@ -35,7 +35,7 @@ let run (line : string) =
         begin
           let argv = Array.of_list (cmd :: args) in
           let pid = (Unix.fork ()) in
-          if pid == 0 then Unix.execvp cmd argv
+          if pid = 0 then Unix.execvp cmd argv
           else if pid < 0 then (Printf.eprintf "Failure forking for process %s" cmd; 1)
           else waitforprocess pid
         end
