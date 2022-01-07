@@ -1,3 +1,15 @@
+let oshell_cd args = 
+  match args with 
+  | [] -> Printf.eprintf "Expected an argument for change directory"; 1
+  | arg :: [] -> Unix.chdir arg; 0
+  | _ -> Printf.eprintf "Received too many args for change directory"; 1
+;;
+
+let builtin_functions = 
+  [("cd", oshell_cd);]
+;;
+
+
 let rec waitforprocess pid =
   let (_, status) = Unix.waitpid [Unix.WUNTRACED] pid in
   match status with
@@ -12,11 +24,16 @@ let run (line : string) =
   | [] -> 0 (* Empty input is a no-op for now *)
   | cmd :: args -> 
     begin
-      let argv = (Array.of_list args) in
-      let pid = (Unix.fork ()) in
-      if pid == 0 then Unix.execvp cmd argv
-      else if pid < 0 then (Printf.eprintf "Failure forking for process %s" cmd; 1)
-      else waitforprocess pid
+      match List.assoc_opt cmd builtin_functions with
+      | None ->
+        begin
+          let argv = (Array.of_list args) in
+          let pid = (Unix.fork ()) in
+          if pid == 0 then Unix.execvp cmd argv
+          else if pid < 0 then (Printf.eprintf "Failure forking for process %s" cmd; 1)
+          else waitforprocess pid
+        end
+      | Some func -> func args
     end
 in
 
