@@ -5,8 +5,14 @@ let oshell_cd args =
   | _ -> Printf.eprintf "Received too many args for change directory"; 1
 ;;
 
+let oshell_help () = 
+  Printf.printf "Oshell: a simple ocaml shell.\nBuilt ins: cd, quit/exit\n"
+;;
+
 let builtin_functions = 
-  [("cd", oshell_cd);]
+  [("quit", fun _ -> ignore @@ exit 0; 0);
+   ("exit", fun _ -> ignore @@ exit 0; 0);
+   ("help", fun _ -> oshell_help (); 0)]
 ;;
 
 
