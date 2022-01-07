@@ -27,7 +27,7 @@ let run (line : string) =
       match List.assoc_opt cmd builtin_functions with
       | None ->
         begin
-          let argv = (Array.of_list args) in
+          let argv = Array.of_list (cmd :: args) in
           let pid = (Unix.fork ()) in
           if pid == 0 then Unix.execvp cmd argv
           else if pid < 0 then (Printf.eprintf "Failure forking for process %s" cmd; 1)
