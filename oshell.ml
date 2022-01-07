@@ -1,5 +1,3 @@
-open Unix;;
-
 let rec waitforprocess pid =
   let (_, status) = Unix.waitpid [Unix.WUNTRACED] pid in
   match status with
@@ -14,8 +12,9 @@ let run (line : string) =
   | [] -> 0 (* Empty input is a no-op for now *)
   | cmd :: args -> 
     begin
+      let argv = (Array.of_list args) in
       let pid = (Unix.fork ()) in
-      if pid == 0 then Unix.execvp cmd (Array.of_list args)
+      if pid == 0 then Unix.execvp cmd argv
       else if pid < 0 then (Printf.eprintf "Failure forking for process %s" cmd; 1)
       else waitforprocess pid
     end
