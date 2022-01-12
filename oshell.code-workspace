@@ -1,0 +1,16 @@
+{
+	"folders": [
+		{
+			"path": "../Advent"
+		},
+		{
+			"path": "."
+		}
+	],
+	"settings": {
+		"ocaml.sandbox": {
+			"kind": "opam",
+			"switch": "default"
+		}
+	}
+}
