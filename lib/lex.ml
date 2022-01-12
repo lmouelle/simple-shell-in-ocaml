@@ -1,14 +1,13 @@
-open Angstrom
+(* Gahhh I really want to do this with angstrom but it is hard to understand!
+   I could go back to using ocamllex/menhir instead, I did thatin college.
+   Way more resources for learning and understanding it. IOr hand rol the parser*)
 
-type token = Word of string | Pipe | Semicolon
+type token = Word of string | Pipe
 
-(* Whitespace, word, whitespace, *)
+(* Whitespace* word whitespace+ *)
 
-let is_space = (function ' ' | '\t' -> true | _ -> false ) 
+let rec lex sourcecode position =
+  let peek () = String.get sourcecode (position + 1) in
+  let advance () = lex sourcecode (position + 1) in
 
-let parse_word = skip_while is_space *> take_till (fun c -> not @@ is_space c) <* skip_while is_space
-  >>= fun lexeme -> return (Word lexeme)
-
-
-let parse_pipe = char '|'
-let parse_end_command = char '|' <|> char ';'
+  let pars
