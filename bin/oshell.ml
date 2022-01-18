@@ -12,7 +12,8 @@ let oshell_help () =
 let builtin_functions = 
   [("quit", fun _ -> ignore @@ exit 0; 0);
    ("exit", fun _ -> ignore @@ exit 0; 0);
-   ("help", fun _ -> oshell_help (); 0)]
+   ("help", fun _ -> oshell_help (); 0);
+   ("cd", fun args -> oshell_cd args)]
 ;;
 
 
