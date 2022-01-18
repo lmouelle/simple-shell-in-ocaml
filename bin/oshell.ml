@@ -1,3 +1,5 @@
+open Lib.Parser
+
 let oshell_cd args = 
   match args with 
   | [] -> Printf.eprintf "Expected an argument for change directory"; 1
@@ -26,21 +28,22 @@ let waitforprocess pid =
 in
 
 let run (line : string) =
-  let tokens = Str.split (Str.regexp " +") line in
-  match tokens with 
-  | [] -> 0 (* Empty input is a no-op for now *)
-  | cmd :: args -> 
+  let tokens = parse_line line in
+  match tokens with
+  | Result.Error msg -> Printf.eprintf "Error parsing commands, %s" msg; 1
+  | Ok None -> Printf.printf "\n"; 0
+  | Ok Some {executable; args} -> 
     begin
-      match List.assoc_opt cmd builtin_functions with
+      match List.assoc_opt executable builtin_functions with
+      | Some func -> func args
       | None ->
         begin
-          let argv = Array.of_list (cmd :: args) in
+          let argv = Array.of_list (executable :: args) in
           let pid = (Unix.fork ()) in
-          if pid = 0 then Unix.execvp cmd argv
-          else if pid < 0 then (Printf.eprintf "Failure forking for process %s" cmd; 1)
+          if pid = 0 then Unix.execvp executable argv
+          else if pid < 0 then (Printf.eprintf "Failure forking for process %s" executable; 1)
           else waitforprocess pid
         end
-      | Some func -> func args
     end
 in
 
