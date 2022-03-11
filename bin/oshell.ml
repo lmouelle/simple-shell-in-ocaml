@@ -65,8 +65,7 @@ let run_prompt () =
       let ln = read_line () in
       ignore (run ln);
     done; 
-  with End_of_file ->
-    print_string "Leaving shell\n";
+  with End_of_file -> ()
 in
 
 (* Top level *)
@@ -77,12 +76,10 @@ if Array.length Sys.argv > 2 then
   end
 else if Array.length Sys.argv == 2 then
   begin
-    Printf.printf "File mode\n";
     let filename = Array.get Sys.argv 0 in
     run_file filename
   end
 else
   begin
-    Printf.printf "Prompt mode\n";
     run_prompt ()
   end
