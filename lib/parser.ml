@@ -11,6 +11,10 @@ type command = {
    args: string list;
 }
 
+type pipelined_commands = {
+   commands: command list
+}
+
 let is_whitespace = (function ' ' | '\t' | '\n' -> true | _ -> false)
 
 let is_token_char = function
@@ -20,6 +24,8 @@ let is_token_char = function
 
 let whitespace_parser = take_while is_whitespace
 
+let pipe_parser = char '|' <* whitespace_parser
+
 let token_parser = take_while1 is_token_char <* whitespace_parser
 
 let command_parser = many token_parser >>= fun tokens ->
@@ -27,5 +33,14 @@ let command_parser = many token_parser >>= fun tokens ->
    | [] -> return None
    | executable :: args -> return (Some {executable; args})
 
+let pipeline_parser = sep_by pipe_parser command_parser >>= function
+   | [] -> return None
+   | possible_commands -> 
+      if (List.filter Option.is_none possible_commands) <> []
+      then fail "Invalid pipeline list"
+      else 
+         let commands = List.map Option.get possible_commands in
+         return (Some {commands})
+
 let parse_line ln =
-   Angstrom.parse_string ~consume:All command_parser (String.trim ln)
+   Angstrom.parse_string ~consume:All pipeline_parser (String.trim ln)
