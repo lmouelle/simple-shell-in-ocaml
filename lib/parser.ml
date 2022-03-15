@@ -11,10 +11,6 @@ type command = {
    args: string list;
 }
 
-type pipelined_commands = {
-   commands: command list
-}
-
 let is_whitespace = (function ' ' | '\t' | '\n' -> true | _ -> false)
 
 let is_token_char = function
@@ -40,7 +36,7 @@ let pipeline_parser = sep_by pipe_parser command_parser >>= function
       then fail "Invalid pipeline list"
       else 
          let commands = List.map Option.get possible_commands in
-         return (Some {commands})
+         return (Some commands)
 
 let parse_line ln =
    Angstrom.parse_string ~consume:All pipeline_parser (String.trim ln)

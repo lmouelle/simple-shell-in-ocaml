@@ -32,7 +32,7 @@ let run (line : string) =
   match tokens with
   | Result.Error msg -> Printf.eprintf "Error parsing commands, %s" msg; 1
   | Ok None -> Printf.printf "\n"; 0
-  | Ok Some {executable; args} -> 
+  | Ok Some ({executable; args} :: []) -> 
     begin
       match List.assoc_opt executable builtin_functions with
       | Some func -> func args
@@ -45,6 +45,7 @@ let run (line : string) =
           else waitforprocess pid
         end
     end
+    | Ok Some _ -> failwith "todo" 
 in
 
 let run_file filename = 
