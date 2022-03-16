@@ -1,5 +1,13 @@
 open Angstrom
 
+(*
+ line: [command | pipeline] * \n
+ pipeline: command ['|' command]+
+ command: word[[\s]+ word]*
+ word: token_char+
+ token_char: all characters where is_token_char char = true 
+*)
+
 type command = {
    executable: string;
    args: string list;
@@ -27,7 +35,7 @@ let pipeline_parser = sep_by pipe_parser command_parser >>= function
    | [] -> return None
    | possible_commands -> 
       if (List.filter Option.is_none possible_commands) <> []
-      then fail "Invalid pipeline list"
+      then fail "Invalid pipeline list, empty subcommand detected"
       else 
          let commands = List.map Option.get possible_commands in
          return (Some commands)
