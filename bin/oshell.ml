@@ -27,25 +27,48 @@ let waitforprocess pid =
   | _ -> failwith "Stopped processes unimplemented"
 in
 
-let run (line : string) =
-  let tokens = parse_line line in
-  match tokens with
-  | Result.Error msg -> Printf.eprintf "Error parsing commands, %s" msg; 1
-  | Ok None -> Printf.printf "\n"; 0
-  | Ok Some ({executable; args} :: []) -> 
+let rec exec_pipeline = function
+| [] -> 0
+| ({executable; args} :: []) -> 
+  begin
+    match List.assoc_opt executable builtin_functions with
+    | Some func -> func args
+    | None ->
+      begin
+        let argv = Array.of_list (executable :: args) in
+        let pid = (Unix.fork ()) in
+        if pid = 0 then Unix.execvp executable argv
+        else if pid < 0 then (Printf.eprintf "Failure forking for process %s" executable; 1)
+        else waitforprocess pid
+      end
+  end
+| ({executable; args} :: remainder) ->
     begin
-      match List.assoc_opt executable builtin_functions with
-      | Some func -> func args
-      | None ->
+      let fd_in, fd_out = Unix.pipe () in
+      let argv = Array.of_list (executable :: args) in
+      let pid = Unix.fork () in
+      if pid = 0 then
         begin
-          let argv = Array.of_list (executable :: args) in
-          let pid = (Unix.fork ()) in
-          if pid = 0 then Unix.execvp executable argv
-          else if pid < 0 then (Printf.eprintf "Failure forking for process %s" executable; 1)
-          else waitforprocess pid
+          Unix.dup2 fd_out Unix.stdout;
+          Unix.close fd_out;
+          Unix.close fd_in;
+          Unix.execvp executable argv
+        end
+      else if pid < 0 then (Printf.eprintf "Failure forking for process %s" executable; 1)
+      else 
+        begin
+          Unix.dup2 fd_in Unix.stdin;
+          Unix.close fd_in;
+          Unix.close fd_out;
+          exec_pipeline remainder
         end
     end
-    | Ok Some _ -> failwith "todo" 
+in
+
+let run (line : string) =
+  match parse line with
+  | Error msg -> Printf.eprintf "Error parsing commands, %s" msg; 1
+  | Ok commands -> exec_pipeline commands
 in
 
 let run_file filename = 
