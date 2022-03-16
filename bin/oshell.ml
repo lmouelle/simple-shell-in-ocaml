@@ -1,59 +1,23 @@
 open Lib.Parser
 
-let oshell_cd args =
-  match args with
-  | [] ->
-      Printf.eprintf "Expected an argument for change directory";
-      1
-  | [ arg ] ->
-      Unix.chdir arg;
-      0
-  | _ ->
-      Printf.eprintf "Received too many args for change directory";
-      1
-
-let oshell_help () =
-  Printf.printf "Oshell: a simple ocaml shell.\nBuilt ins: cd, quit/exit\n"
-
-let builtin_functions =
-  [
-    ( "quit",
-      fun _ ->
-        ignore @@ exit 0;
-        0 );
-    ( "exit",
-      fun _ ->
-        ignore @@ exit 0;
-        0 );
-    ( "help",
-      fun _ ->
-        oshell_help ();
-        0 );
-    ("cd", fun args -> oshell_cd args);
-  ]
-;;
-
 let waitforprocess pid =
   let _, status = Unix.waitpid [ Unix.WUNTRACED ] pid in
   match status with
   | Unix.WEXITED exitcode -> exitcode
   | Unix.WSIGNALED exitcode -> exitcode
   | _ -> failwith "Stopped processes unimplemented"
-in
+;;
 
 let rec exec_pipeline = function
   | [] -> 0
-  | [ { executable; args } ] -> (
-      match List.assoc_opt executable builtin_functions with
-      | Some func -> func args
-      | None ->
-          let argv = Array.of_list (executable :: args) in
-          let pid = Unix.fork () in
-          if pid = 0 then Unix.execvp executable argv
-          else if pid < 0 then (
-            Printf.eprintf "Failure forking for process %s" executable;
-            1)
-          else waitforprocess pid)
+  | [ { executable; args } ] ->
+      let argv = Array.of_list (executable :: args) in
+      let pid = Unix.fork () in
+      if pid = 0 then Unix.execvp executable argv
+      else if pid < 0 then (
+        Printf.eprintf "Failure forking for process %s" executable;
+        1)
+      else waitforprocess pid
   | { executable; args } :: remainder ->
       let fd_in, fd_out = Unix.pipe () in
       let argv = Array.of_list (executable :: args) in
