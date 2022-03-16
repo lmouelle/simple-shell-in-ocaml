@@ -1,11 +1,5 @@
 open Angstrom
 
-(* Gahhh I really want to do this with angstrom but it is hard to understand!
-   I could go back to using ocamllex/menhir instead, I did thatin college.
-   Way more resources for learning and understanding it. IOr hand rol the parser*)
-
-let split_string =  Str.split @@ Str.regexp " +"
-
 type command = {
    executable: string;
    args: string list;
