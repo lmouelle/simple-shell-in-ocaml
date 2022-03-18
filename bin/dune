@@ -1,3 +1,4 @@
 (executable
   (name oshell)
+  (modes byte)
   (libraries lib))
