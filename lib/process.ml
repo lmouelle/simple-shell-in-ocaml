@@ -1,36 +1,37 @@
 open Parser
+open Unix
 
-let waitforprocess pid =
-  let _, status = Unix.waitpid [ Unix.WUNTRACED ] pid in
-  match status with
-  | Unix.WEXITED exitcode -> exitcode
-  | Unix.WSIGNALED exitcode -> exitcode
-  | _ -> failwith "Stopped processes unimplemented"
+let rec waitforprocess retcode =
+  try
+    match wait () with
+    | _, WEXITED n -> waitforprocess (retcode lor n)
+    | _, _ -> waitforprocess 127
+  with Unix_error (ECHILD, _, _) -> retcode
 
 let rec exec_pipeline = function
   | [] -> 0
   | [ { executable; args } ] ->
       let argv = Array.of_list (executable :: args) in
-      let pid = Unix.fork () in
-      if pid = 0 then Unix.execvp executable argv
+      let pid = fork () in
+      if pid = 0 then execvp executable argv
       else if pid < 0 then (
         Printf.eprintf "Failure forking for process %s" executable;
         1)
       else waitforprocess pid
   | { executable; args } :: remainder ->
-      let fd_in, fd_out = Unix.pipe () in
+      let fd_in, fd_out = pipe () in
       let argv = Array.of_list (executable :: args) in
-      let pid = Unix.fork () in
+      let pid = fork () in
       if pid = 0 then (
-        Unix.dup2 fd_out Unix.stdout;
-        Unix.close fd_out;
-        Unix.close fd_in;
-        Unix.execvp executable argv)
+        dup2 fd_out stdout;
+        close fd_out;
+        close fd_in;
+        execvp executable argv)
       else if pid < 0 then (
         Printf.eprintf "Failure forking for process %s" executable;
         1)
       else (
-        Unix.dup2 fd_in Unix.stdin;
-        Unix.close fd_in;
-        Unix.close fd_out;
+        dup2 fd_in stdin;
+        close fd_in;
+        close fd_out;
         exec_pipeline remainder)
