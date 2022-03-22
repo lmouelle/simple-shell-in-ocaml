@@ -6,7 +6,7 @@ let run (line : string) =
   | Error msg ->
       Printf.eprintf "Error parsing commands, %s" msg;
       1
-  | Ok commands -> exec_pipeline commands
+  | Ok commands -> exec commands
 
 let run_file filename =
   let chan = open_in filename in

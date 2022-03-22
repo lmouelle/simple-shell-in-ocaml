@@ -1,63 +1,88 @@
 open Angstrom
 
 (*
- shell language: command? \n
- command: SimpleCommand | Pipeline | Redirection
- redirection: pipeline | simple_command > filename
- pipeline: simple_command ['|' simple_command]+
- simple command: word[[\s]+ word]*
- word: token_char+
- token_char: all characters where is_token_char char = true 
+commandline ::= list
+          |  list ";"
+          |  list "&"
+
+list     ::=  conditional
+          |   list ";" conditional
+          |   list "&" conditional
+
+conditional ::=  pipeline
+          |   conditional "&&" pipeline
+          |   conditional "||" pipeline
+
+pipeline ::=  command
+          |   pipeline "|" command
+
+command  ::=  word
+          |   redirection
+          |   command word
+          |   command redirection
+
+redirection  ::=  redirectionop filename
+redirectionop  ::=  "<"  |  ">"  |  "2>"
+
 *)
 
-type simple_command = { executable : string; args : string list }
+type redirection =
+  | StderrRedirect of string
+  | StdinRedirect of string
+  | StdoutRedirect of string
 
-type command =
-  | SimpleCommand of simple_command
-  | Pipeline of simple_command list
-  | Redirection of (command * string)
+and command =
+  | Word of (string * command option)
+  | Redirection of (redirection * command option)
 
-let is_whitespace = function ' ' | '\t' | '\n' -> true | _ -> false
+and pipeline = Command of command list
 
-let is_token_char = function
-  | '|' | '>' -> false
-  | c when is_whitespace c -> false
-  | _ -> true
+and conditional =
+  | Pipeline of pipeline
+  | And of (conditional * pipeline)
+  | Or of (conditional * pipeline)
 
-let word_parser = take_while1 is_token_char <?> "failed to parse word"
-let whitespace_dropping_parser = skip_while is_whitespace
+and oshell_list =
+  | Conditional of conditional
+  | Background of (oshell_list * conditional)
+  | Foreground of (oshell_list * conditional)
 
-let simple_command_parser =
-  sep_by1 whitespace_dropping_parser word_parser <* whitespace_dropping_parser <?> "Failed to parse command"
-  >>= function
-  | [] -> fail "Empty command"
-  | executable :: args -> return { executable; args }
+and commandline =
+  | List of oshell_list
+  | EndsWithBackground of oshell_list
+  | EndsWithForeground of oshell_list
 
-let pipeline_parser : command t =
-  sep_by1
-    (whitespace_dropping_parser *> char '|' <* whitespace_dropping_parser)
-    simple_command_parser
-  >>= function
-  | [] -> fail "Cannot derive pipeline from empty list"
-  | [_] -> fail @@ "Cannot derive pipeline from single element"
-  | commands -> return (Pipeline commands)
+type ast = 
+| Word of string
+| Redirection of redirection
+| Command of command
+| Pipeline of pipeline
+| Conditional of conditional
+| List of oshell_list
+| Commandline of commandline
 
-let promoted_simple_command_parser = simple_command_parser >>= fun simplcmd -> return (SimpleCommand simplcmd)
+let is_seperating_whitespace = function ' ' | '\t' -> true | _ -> false
+let is_word_char = function 'a' .. 'z' | 'A' .. 'Z' -> true | _ -> false
+let whitespace_dropping_parser = skip_while is_seperating_whitespace
+
+let word_parser =
+  whitespace_dropping_parser *> take_while1 is_word_char
+  <* whitespace_dropping_parser >>= fun word -> return @@ Word word
 
 let redirection_parser =
-  (* This promoted_simple_command_parser is needed to wrap simple_command into SimpleCommand. *)
+  whitespace_dropping_parser *> (string "<" <|> string ">" <|> string "2>")
+  <* whitespace_dropping_parser
+  >>= fun operator -> word_parser 
+  >>= fun filename ->
+  match operator with
+  | "<" -> return @@ Redirection (StdinRedirect filename)
+  | ">" -> return @@ Redirection (StdoutRedirect filename)
+  | "2>" -> return @@ Redirection (StderrRedirect filename)
+  | _ ->
+      fail "Unexpected redirection character found"
+      <* whitespace_dropping_parser
 
-  pipeline_parser <|> promoted_simple_command_parser <* whitespace_dropping_parser <* char '>' *> whitespace_dropping_parser
-  >>= fun cmd -> word_parser
-  >>= fun filename -> return (Redirection (cmd, filename))
+let command_parser = 
+  word_parser <|> redirection_parser 
 
-
-let no_op_parser =
-  whitespace_dropping_parser >>| fun _ ->
-  SimpleCommand { executable = ""; args = [] }
-
-let shell_parser = pipeline_parser <|> redirection_parser <|> promoted_simple_command_parser <|> no_op_parser
-
-(* We really should modify the parser to accept trailing and preceding whitespace
-   instead of just trimming the string. But this is easier for now. *)
-let parse ln = parse_string ~consume:All shell_parser (String.trim ln)
+let parse_with str parser = parse_string ~consume:All parser str
