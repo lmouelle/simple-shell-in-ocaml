@@ -33,7 +33,7 @@ type redirection =
 
 and command = [`Word of string | `Redirection of redirection] list
 
-and pipeline = Command of command list
+and pipeline = Commands of command list
 
 and conditional =
   | Pipeline of pipeline
@@ -85,5 +85,10 @@ let command_parser =
   >>= fun (elements) ->
     let commandlist : command = List.map (function Word w -> `Word w | Redirection r -> `Redirection r | _ -> failwith "Unexpected elem type") elements in
     return @@ Command commandlist
+
+let pipeline_parser = sep_by1 (char '|') command_parser >>= fun (cmds) -> 
+  let commandlist = List.map (function Command c -> c | _ -> failwith "Unexpected type") cmds in
+  let commandlist2 = Commands commandlist in
+  return @@ Pipeline commandlist2
 
 let parse_with str parser = parse_string ~consume:All parser str
