@@ -31,9 +31,7 @@ type redirection =
   | StdinRedirect of string
   | StdoutRedirect of string
 
-and command =
-  | Word of (string * command option)
-  | Redirection of (redirection * command option)
+and command = [`Word of string | `Redirection of redirection] list
 
 and pipeline = Command of command list
 
@@ -69,20 +67,23 @@ let word_parser =
   whitespace_dropping_parser *> take_while1 is_word_char
   <* whitespace_dropping_parser >>= fun word -> return @@ Word word
 
+let filename_parser = whitespace_dropping_parser *> take_while1 (fun c -> not @@ is_seperating_whitespace c) <* whitespace_dropping_parser
+
 let redirection_parser =
-  whitespace_dropping_parser *> (string "<" <|> string ">" <|> string "2>")
-  <* whitespace_dropping_parser
-  >>= fun operator -> word_parser 
+  whitespace_dropping_parser *> (string "<" <|> string ">" <|> string "2>") <* whitespace_dropping_parser
+  >>= fun operator -> filename_parser 
   >>= fun filename ->
   match operator with
   | "<" -> return @@ Redirection (StdinRedirect filename)
   | ">" -> return @@ Redirection (StdoutRedirect filename)
   | "2>" -> return @@ Redirection (StderrRedirect filename)
-  | _ ->
-      fail "Unexpected redirection character found"
-      <* whitespace_dropping_parser
+  | _ -> fail "Unexpected redirection character found"
+  <* whitespace_dropping_parser
 
 let command_parser = 
-  word_parser <|> redirection_parser 
+  many1 (word_parser <|> redirection_parser) 
+  >>= fun (elements) ->
+    let commandlist : command = List.map (function Word w -> `Word w | Redirection r -> `Redirection r | _ -> failwith "Unexpected elem type") elements in
+    return @@ Command commandlist
 
 let parse_with str parser = parse_string ~consume:All parser str
