@@ -86,4 +86,26 @@ let pipeline_parser = sep_by1 (char '|') command_parser >>= fun (cmds) ->
   let commandlist2 = Commands commandlist in
   return @@ Pipeline commandlist2
 
+let chainl1 e op =
+  let rec go acc =
+    (lift2 (fun f x -> f acc x) op e >>= go) <|> return acc in
+  e >>= fun init -> go init
+
+let and_parser = string "&&" *> return(fun lhs rhs -> 
+  match lhs, rhs with
+  | Conditional a, Pipeline p -> Conditional (And (a, p))
+  | Pipeline p, Conditional c -> Conditional (And (c, p))
+  | Pipeline p1, Pipeline p2 -> Conditional (And (Pipeline p1, p2))
+  | _ -> failwith "unexpected type")
+
+let or_parser = string "||" *> return (fun lhs rhs -> 
+  match lhs, rhs with
+  | Conditional a, Pipeline p -> Conditional (Or (a, p))
+  | Pipeline p, Conditional c -> Conditional (Or (c, p))
+  | Pipeline p1, Pipeline p2 -> Conditional (Or (Pipeline p1, p2))
+  | _ -> failwith "Unexpected type")
+
+let conditional_parser = 
+  chainl1 pipeline_parser (and_parser <|> or_parser)
+
 let parse_with str parser = parse_string ~consume:All parser str
