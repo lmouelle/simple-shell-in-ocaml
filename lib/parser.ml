@@ -1,25 +1,20 @@
 open Angstrom
 
 (*
-commandline ::= list
-          |  list ";"
-          |  list "&"
 
-list     ::=  conditional
-          |   list ";" conditional
-          |   list "&" conditional
+let list_op = ";" | "&"
 
-conditional ::=  pipeline
-          |   conditional "&&" pipeline
-          |   conditional "||" pipeline
+commandline ::= list (list_op list)*
 
-pipeline ::=  command
-          |   pipeline "|" command
+list ::=  conditional (list_op conditional)*
 
-command  ::=  word
-          |   redirection
-          |   command word
-          |   command redirection
+let conditional_op = "&&" | "||"
+
+conditional ::= pipeline (conditional_op pipeline)*
+
+pipeline ::=  command ('|' command)*
+
+command  ::=  (word | redirection)+
 
 redirection  ::=  redirectionop filename
 redirectionop  ::=  "<"  |  ">"  |  "2>"
