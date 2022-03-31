@@ -29,7 +29,7 @@ type shell_list = Conditional of conditional |Foreground of (shell_list * shell_
 type commandline = shell_list list
 
 let is_seperating_whitespace = function ' ' | '\t' -> true | _ -> false
-let is_word_char = function 'a' .. 'z' | 'A' .. 'Z' -> true | _ -> false
+let is_word_char = function ' ' | '\t' | '\r' | '\n' | '|' | '$' | '&' | ';' | '>' | '<' -> false | _ -> true
 let whitespace_dropping_parser = skip_while is_seperating_whitespace
 
 let word_parser =
