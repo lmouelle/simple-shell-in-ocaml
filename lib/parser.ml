@@ -1,7 +1,7 @@
 open Angstrom
 
 (*
-commandline ::= list (list_op list)*
+commandline ::= list (list_op)?
 
 list ::=  conditional (list_op conditional)*
 list_op ::= ";" | "&"
@@ -26,7 +26,7 @@ type command = [`Redirection of redirection | `Word of string] list
 type pipeline = command list
 type conditional = Pipeline of pipeline | Or of (conditional * conditional) | And of (conditional * conditional)
 type shell_list = Conditional of conditional |Foreground of (shell_list * shell_list) | Background of (shell_list * shell_list)
-type commandline = shell_list list
+type commandline = CmdlineForeground of shell_list | CmdlineBackground of shell_list | List of shell_list
 
 let is_seperating_whitespace = function ' ' | '\t' -> true | _ -> false
 let is_word_char = function ' ' | '\t' | '\r' | '\n' | '|' | '$' | '&' | ';' | '>' | '<' -> false | _ -> true
@@ -77,4 +77,14 @@ let list_parser =
   let initialvalue : shell_list t = conditional_parser >>= fun c -> return (Conditional c) in
   chainl1 initialvalue (background_parser <|> foreground_parser)
 
+let commandline_parser =
+  list_parser >>= fun lst -> 
+  (char ';' <|> char '&' >>= fun operator ->
+  match operator with
+  | ';' -> return (CmdlineForeground lst)
+  | '&' -> return (CmdlineBackground lst)
+  | _ -> failwith "unexpected operator") <|> return @@ List lst
+
 let parse_with str parser = parse_string ~consume:All parser str
+
+let parse s = parse_with s commandline_parser
