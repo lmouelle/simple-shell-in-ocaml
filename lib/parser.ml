@@ -1,16 +1,13 @@
 open Angstrom
 
 (*
-
-let list_op = ";" | "&"
-
 commandline ::= list (list_op list)*
 
 list ::=  conditional (list_op conditional)*
-
-let conditional_op = "&&" | "||"
+list_op ::= ";" | "&"
 
 conditional ::= pipeline (conditional_op pipeline)*
+conditional_op ::= "&&" | "||"
 
 pipeline ::=  command ('|' command)*
 
@@ -18,7 +15,6 @@ command  ::=  (word | redirection)+
 
 redirection  ::=  redirectionop filename
 redirectionop  ::=  "<"  |  ">"  |  "2>"
-
 *)
 
 type redirection =
