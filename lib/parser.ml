@@ -108,4 +108,17 @@ let or_parser = string "||" *> return (fun lhs rhs ->
 let conditional_parser = 
   chainl1 pipeline_parser (and_parser <|> or_parser)
 
+let foreground_parser = string ";" *> return (fun lhs rhs ->
+  match lhs, rhs with
+  | Conditional a, Conditional b -> List (Foreground (Conditional a, b))
+  | _ -> failwith "unexpected type")
+
+let background_parser = string "&" *> return (fun lhs rhs ->
+  match lhs, rhs with
+  | Conditional a, Conditional b -> List (Background (Conditional a, b))
+  | _ -> failwith "unexpected type")
+  
+let list_parser =
+  chainl1 conditional_parser (background_parser <|> foreground_parser)
+
 let parse_with str parser = parse_string ~consume:All parser str
