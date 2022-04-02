@@ -11,7 +11,7 @@ conditional_op ::= "&&" | "||"
 
 pipeline ::=  command ('|' command)*
 
-command  ::= word (word | redirection)*
+command  ::= word word* redirection?
 
 redirection  ::=  redirectionop filename
 redirectionop  ::=  "<"  |  ">"  |  "2>"
@@ -22,7 +22,7 @@ type redirection =
   | StdinRedirect of string
   | StdoutRedirect of string
   
-type command = {executable : string; args : [`Redirection of redirection | `Word of string] list}
+type command = {executable : string; args : string list; outfile : redirection option}
 type pipeline = command list
 type conditional = Pipeline of pipeline | Or of (conditional * conditional) | And of (conditional * conditional)
 type shell_list = Conditional of conditional |Foreground of (shell_list * shell_list) | Background of (shell_list * shell_list)
@@ -36,7 +36,7 @@ let word_parser =
   whitespace_dropping_parser *> 
   take_while1 is_word_char
   <* whitespace_dropping_parser 
-  >>= fun word -> return @@ `Word word
+  >>= fun word -> return word
 
 let filename_parser = whitespace_dropping_parser *> take_while1 (fun c -> not @@ is_seperating_whitespace c) <* whitespace_dropping_parser
 
@@ -45,19 +45,18 @@ let redirection_parser =
   >>= fun operator -> filename_parser 
   >>= fun filename ->
   match operator with
-  | "<" -> return @@ `Redirection (StdinRedirect filename)
-  | ">" -> return @@ `Redirection (StdoutRedirect filename)
-  | "2>" -> return @@ `Redirection (StderrRedirect filename)
+  | "<" -> return @@ Some (StdinRedirect filename)
+  | ">" -> return @@ Some (StdoutRedirect filename)
+  | "2>" -> return @@ Some (StderrRedirect filename)
   | _ -> fail "Unexpected redirection character found"
   <* whitespace_dropping_parser
 
 
 let command_parser : command t =
-  word_parser >>= fun word  ->
-  many (word_parser <|> redirection_parser) >>= fun args ->
-  match word with 
-  `Word cmd -> return {executable = cmd; args = args}
-  | _ -> fail "Unexpected type"
+  word_parser >>= fun cmd ->
+  many word_parser >>= fun args ->
+  option None redirection_parser >>= fun redir ->
+  return {executable = cmd; args = args; outfile = redir}
 
 let pipeline_parser : pipeline t = sep_by1 (char '|') command_parser
 
