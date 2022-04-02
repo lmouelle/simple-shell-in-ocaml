@@ -11,7 +11,7 @@ conditional_op ::= "&&" | "||"
 
 pipeline ::=  command ('|' command)*
 
-command  ::=  (word | redirection)+
+command  ::= word (word | redirection)*
 
 redirection  ::=  redirectionop filename
 redirectionop  ::=  "<"  |  ">"  |  "2>"
@@ -22,7 +22,7 @@ type redirection =
   | StdinRedirect of string
   | StdoutRedirect of string
   
-type command = [`Redirection of redirection | `Word of string] list
+type command = {executable : string; args : [`Redirection of redirection | `Word of string] list}
 type pipeline = command list
 type conditional = Pipeline of pipeline | Or of (conditional * conditional) | And of (conditional * conditional)
 type shell_list = Conditional of conditional |Foreground of (shell_list * shell_list) | Background of (shell_list * shell_list)
@@ -52,7 +52,12 @@ let redirection_parser =
   <* whitespace_dropping_parser
 
 
-let command_parser : command t = many1 (word_parser <|> redirection_parser) 
+let command_parser : command t =
+  word_parser >>= fun word  ->
+  many (word_parser <|> redirection_parser) >>= fun args ->
+  match word with 
+  `Word cmd -> return {executable = cmd; args = args}
+  | _ -> fail "Unexpected type"
 
 let pipeline_parser : pipeline t = sep_by1 (char '|') command_parser
 
