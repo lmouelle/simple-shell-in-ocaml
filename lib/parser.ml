@@ -13,7 +13,7 @@ pipeline ::=  command ('|' command)*
 
 command  ::= word word* redirection?
 
-redirection  ::=  redirectionop filename
+redirection  ::= redirectionop filename
 redirectionop  ::=  "<"  |  ">"  |  "2>"
 *)
 
@@ -45,9 +45,9 @@ let redirection_parser =
   >>= fun operator -> filename_parser 
   >>= fun filename ->
   match operator with
-  | "<" -> return @@ Some (StdinRedirect filename)
-  | ">" -> return @@ Some (StdoutRedirect filename)
-  | "2>" -> return @@ Some (StderrRedirect filename)
+  | "<" -> return @@ (StdinRedirect filename)
+  | ">" -> return @@ (StdoutRedirect filename)
+  | "2>" -> return @@ (StderrRedirect filename)
   | _ -> fail "Unexpected redirection character found"
   <* whitespace_dropping_parser
 
@@ -55,7 +55,7 @@ let redirection_parser =
 let command_parser : command t =
   word_parser >>= fun cmd ->
   many word_parser >>= fun args ->
-  option None redirection_parser >>= fun redir ->
+  option None (redirection_parser >>= fun r -> return @@ Some r) >>= fun redir ->
   return {executable = cmd; args = args; outfile = redir}
 
 let pipeline_parser : pipeline t = sep_by1 (char '|') command_parser
