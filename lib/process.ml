@@ -9,8 +9,17 @@ let waitforprocess pid =
   | _ -> failwith "Stopped processes unimplemented"
 
 let rec exec = function List lst -> exec_list lst | _ -> failwith "todo"
+
 and exec_list = function Conditional c -> exec_cond c | _ -> failwith "todo"
-and exec_cond = function Pipeline p -> exec_pipeline p | _ -> failwith "todo"
+
+and exec_cond = function
+  | Pipeline p -> exec_pipeline p
+  | Or (lhs, rhs) ->
+      let retcode = exec_cond lhs in
+      if retcode <> 0 then exec_cond rhs else retcode
+  | And (lhs, rhs) ->
+      let retcode = exec_cond lhs in
+      if retcode <> 0 then retcode else exec_cond rhs
 
 and exec_pipeline = function
   | command :: _ -> exec_command command
