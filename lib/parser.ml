@@ -63,7 +63,10 @@ let pipeline_parser : pipeline t = sep_by1 (char '|') command_parser
 let chainl1 e op =
   let rec go acc =
     (lift2 (fun f x -> f acc x) op e >>= go) <|> return acc in
-  e >>= fun init -> go init
+  e >>= go
+
+let rec chainr1 e op = 
+  e >>= fun (result) -> (op >>= fun f -> chainr1 e op >>| f result) <|> return result
 
 let and_parser = string "&&" *> return (fun lhs rhs -> And (lhs, rhs))
 
