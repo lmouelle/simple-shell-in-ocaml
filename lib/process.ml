@@ -21,15 +21,33 @@ and exec_cond = function
       let retcode = exec_cond lhs in
       if retcode <> 0 then retcode else exec_cond rhs
 
-and exec_pipeline = function
-  | command :: _ -> exec_command command
-  | _ -> failwith "todo"
-
-and exec_command cmd =
+and exec_pipeline cmds =
+  let cmdsarray = Array.of_list cmds in
+  let last_index = Array.length cmdsarray - 1 in
+  for i = 0 to last_index - 1 do
+    let fdin, fdout = pipe () in
+    let pid = fork () in
+    if pid < 0 then failwith "fork failed"
+    else if pid > 0 then
+      begin
+        dup2 fdin stdin;
+        close fdout;
+        close fdin;
+      end
+    else
+      begin
+        dup2 fdout stdout;
+        close fdout;
+        close fdin;
+        exec_cmd cmdsarray.(i)
+      end
+  done;
   let pid = fork () in
-  if pid < 0 then failwith "Fork failure"
-  else if pid > 0 then waitforprocess pid
-  else
+  if pid < 0 then failwith "fork failed"
+  else if pid = 0 then (exec_cmd cmdsarray.(last_index); 0)
+  else waitforprocess pid
+
+and exec_cmd cmd =    
     let err =
       match cmd.outfile with
       | Some (StderrRedirect filename) ->
