@@ -32,6 +32,6 @@ if Array.length Sys.argv > 2 then (
   Printf.printf "Usage: oshell [script]";
   exit 64)
 else if Array.length Sys.argv == 2 then
-  let filename = Array.get Sys.argv 0 in
+  let filename = Array.get Sys.argv 1 in
   run_file filename
 else run_prompt ()
